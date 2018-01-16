@@ -23,6 +23,15 @@ def data_merge():
 
     return df
 
+def plot_prod(df):
+    plt.close()
+
+    plt.plot(df['date'], df['production'])
+
+    plt.savefig('figures/prod.png')
+
 
 if __name__ == '__main__':
     df = data_merge()
+
+    plot_prod(df)
