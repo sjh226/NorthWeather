@@ -25,6 +25,8 @@ def data_merge():
     df['day_count'] = ((df['date'] - df['date'].min()) / np.timedelta64(1, 'D')).astype(int)
     df['mean_temperature'].replace('-', np.nan, inplace=True)
     df.fillna(method='ffill', inplace=True)
+    df.fillna(method='bfill', inplace=True)
+    df['mean_temperature'] = df['mean_temperature'].astype(int)
 
     return df
 
@@ -43,6 +45,9 @@ def feature(df):
 
     df.loc[1:, 'temp_trend'] = trend
 
+    df['temp_diff'] = df['mean_temperature'] - df['mean_temperature'].shift(1)
+    df['prod_diff'] = (df['production'] - df['production'].shift(1)).shift(1)
+
     return df
 
 def plot_prod(df):
@@ -55,6 +60,26 @@ def plot_prod(df):
     plt.xlabel('Time')
     plt.ylabel('Total Daily Gas Production (mcf)')
     plt.savefig('figures/prod.png')
+
+def plot_regr(df):
+    plt.close()
+    fig, ax = plt.subplots(1, 1, figsize=(12, 10))
+
+    # ax.plot(df['date'], df['temp_diff'])
+    # ax.plot(df['date'], df['prod_diff'], color='k')
+    ax.scatter(df['temp_diff'], df['prod_diff'], label='Real Data')
+
+    line_df = df.dropna()
+    mat = np.vstack([line_df['temp_diff'], np.ones(line_df.shape[0])]).T
+    m, c = np.linalg.lstsq(mat, line_df['prod_diff'])[0]
+    plt.plot(line_df['temp_diff'], m * line_df['temp_diff'] + c, 'r', label='Regression')
+
+    plt.title('Temperature Change Influene on Production')
+    plt.xlabel('Change in Temperature (°F/day)')
+    plt.ylabel('Change in Production (mcf/day)')
+    plt.legend()
+
+    plt.savefig('figures/change.png')
 
 def correlation(df, plt_type='heat'):
     plt.close()
@@ -97,5 +122,6 @@ if __name__ == '__main__':
     df = feature(df)
 
     # plot_prod(df)
-    correlation(df, plt_type='heat')
+    plot_regr(df)
+    # correlation(df, plt_type='heat')
     # correlation(df, plt_type='scatter')
