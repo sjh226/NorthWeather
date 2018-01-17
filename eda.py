@@ -138,9 +138,10 @@ def correlation(df, plt_type='heat'):
 if __name__ == '__main__':
     df = data_merge()
     df = feature(df)
+    df.to_csv('data/full_data.csv')
 
     # plot_prod(df)
     # plot_regr(df)
-    plot_trend(df)
+    # plot_trend(df)
     # correlation(df, plt_type='heat')
     # correlation(df, plt_type='scatter')
