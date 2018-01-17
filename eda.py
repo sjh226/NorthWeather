@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-# -*- coding: utf-8 -*-
+from sklearn.preprocessing import StandardScaler
 
 
 def data_merge():
@@ -22,6 +22,26 @@ def data_merge():
 
     df = prod_df.merge(weather_df, on='date')
     df.drop(['VOLUME_DATE', 'Unnamed: 1'], axis=1, inplace=True)
+    df['day_count'] = ((df['date'] - df['date'].min()) / np.timedelta64(1, 'D')).astype(int)
+    df['mean_temperature'].replace('-', np.nan, inplace=True)
+    df.fillna(method='ffill', inplace=True)
+
+    return df
+
+def feature(df):
+    # Does not influence production
+    # Tried between 2-7 days trend
+    df['temp_trend'] = np.zeros(df.shape[0])
+
+    trend = []
+    for idx, row in df[1:].iterrows():
+        temp_mat = np.vstack([np.array(df.loc[idx - 1:idx, 'day_count']), \
+                             np.ones(2)]).T
+        y = np.array(df.loc[idx - 1:idx, 'mean_temperature'])
+        m, c = np.linalg.lstsq(temp_mat, y)[0]
+        trend.append(m)
+
+    df.loc[1:, 'temp_trend'] = trend
 
     return df
 
@@ -38,6 +58,16 @@ def plot_prod(df):
 
 def correlation(df, plt_type='heat'):
     plt.close()
+
+    # Can we scale while keeping labels?
+    # Scaling did not change the correlation values
+    scaler = StandardScaler()
+    corr_df = df[['production', 'max_temperature', \
+                  'min_temperature', 'max_dew_point', \
+                  'meandew_point', 'min_dewpoint', 'temp_trend']]
+    s_df = scaler.fit_transform(corr_df)
+    s_df = pd.DataFrame(s_df, columns=corr_df.columns)
+
     corr = df.corr()
     s = corr.unstack()
     fig, ax = plt.subplots(figsize=(10, 10))
@@ -47,8 +77,9 @@ def correlation(df, plt_type='heat'):
         plt.xticks(range(len(corr.columns)), corr.columns, rotation='vertical')
         plt.yticks(range(len(corr.columns)), corr.columns)
         fig.colorbar(cax)
-        plt.title('Correlation Between Production and Weather Data', y=1.35)
-        print(s[:18])
+        plt.title('Correlation Between Production and Weather Data', y=1.2)
+        print(s[:20])
+
     elif plt_type.lower() == 'scatter':
         corr_df = df[['date', 'production', 'max_temperature', \
                       'min_temperature', 'max_dew_point', \
@@ -58,12 +89,13 @@ def correlation(df, plt_type='heat'):
 
     plt.tight_layout()
 
-    plt.savefig('figures/corr_{}.png'.format(plt_type))
+    plt.savefig('figures/corr_{}_trend.png'.format(plt_type))
 
 
 if __name__ == '__main__':
     df = data_merge()
+    df = feature(df)
 
     # plot_prod(df)
     correlation(df, plt_type='heat')
-    correlation(df, plt_type='scatter')
+    # correlation(df, plt_type='scatter')
