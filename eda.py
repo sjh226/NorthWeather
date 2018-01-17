@@ -74,12 +74,30 @@ def plot_regr(df):
     m, c = np.linalg.lstsq(mat, line_df['prod_diff'])[0]
     plt.plot(line_df['temp_diff'], m * line_df['temp_diff'] + c, 'r', label='Regression')
 
-    plt.title('Temperature Change Influene on Production')
+    plt.title('Temperature Change Influence on Production')
     plt.xlabel('Change in Temperature (°F/day)')
     plt.ylabel('Change in Production (mcf/day)')
     plt.legend()
 
     plt.savefig('figures/change.png')
+
+def plot_trend(df):
+    plt.close()
+    fig, ax = plt.subplots(1, 1, figsize=(12, 10))
+
+    ax.scatter(df['mean_temperature'], df['production'], label='Daily Production')
+
+    line_df = df.dropna()
+    mat = np.vstack([line_df['mean_temperature'], np.ones(line_df.shape[0])]).T
+    m, c = np.linalg.lstsq(mat, line_df['production'])[0]
+    plt.plot(line_df['mean_temperature'], m * line_df['mean_temperature'] + c, 'r', label='Regression')
+
+    plt.title('Temperature Influence on Production')
+    plt.xlabel('Temperature (°F)')
+    plt.ylabel('Production (mcf)')
+    plt.legend()
+
+    plt.savefig('figures/prod_trend.png')
 
 def correlation(df, plt_type='heat'):
     plt.close()
@@ -122,6 +140,7 @@ if __name__ == '__main__':
     df = feature(df)
 
     # plot_prod(df)
-    plot_regr(df)
+    # plot_regr(df)
+    plot_trend(df)
     # correlation(df, plt_type='heat')
     # correlation(df, plt_type='scatter')
