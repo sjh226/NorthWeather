@@ -39,6 +39,7 @@ def plot_prod(df):
 def correlation(df, plt_type='heat'):
     plt.close()
     corr = df.corr()
+    s = corr.unstack()
     fig, ax = plt.subplots(figsize=(10, 10))
 
     if plt_type.lower() == 'heat':
@@ -47,6 +48,7 @@ def correlation(df, plt_type='heat'):
         plt.yticks(range(len(corr.columns)), corr.columns)
         fig.colorbar(cax)
         plt.title('Correlation Between Production and Weather Data', y=1.35)
+        print(s[:18])
     elif plt_type.lower() == 'scatter':
         corr_df = df[['date', 'production', 'max_temperature', \
                       'min_temperature', 'max_dew_point', \
