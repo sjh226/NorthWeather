@@ -30,6 +30,7 @@ def linear(df):
     y = df.pop('production')
     y = y.values
     X = df.values
+    X = np.hstack([X, np.ones(X.shape[0]).reshape(-1, 1)])
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=21)
     lr.fit(X_train, y_train)
