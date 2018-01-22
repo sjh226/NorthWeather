@@ -85,19 +85,19 @@ def plot_trend(df):
     plt.close()
     fig, ax = plt.subplots(1, 1, figsize=(12, 10))
 
-    ax.scatter(df['mean_temperature'], df['production'], label='Daily Production')
+    ax.scatter(df['min_humidity'], df['production'], label='Daily Production')
 
     line_df = df.dropna()
-    mat = np.vstack([line_df['mean_temperature'], np.ones(line_df.shape[0])]).T
+    mat = np.vstack([line_df['min_humidity'], np.ones(line_df.shape[0])]).T
     m, c = np.linalg.lstsq(mat, line_df['production'])[0]
-    plt.plot(line_df['mean_temperature'], m * line_df['mean_temperature'] + c, 'r', label='Regression')
+    plt.plot(line_df['min_humidity'], m * line_df['min_humidity'] + c, 'r', label='Regression')
 
-    plt.title('Temperature Influence on Production')
-    plt.xlabel('Temperature (°F)')
+    plt.title('Humidity Influence on Production')
+    plt.xlabel('Humidity (%)')
     plt.ylabel('Production (mcf)')
     plt.legend()
 
-    plt.savefig('figures/prod_trend.png')
+    plt.savefig('figures/prod_trend_humidity.png')
 
 def correlation(df, plt_type='heat'):
     plt.close()
@@ -136,12 +136,14 @@ def correlation(df, plt_type='heat'):
 
 
 if __name__ == '__main__':
-    df = data_merge()
-    df = feature(df)
-    df.to_csv('data/full_data.csv')
+    # df = data_merge()
+    # df = feature(df)
+    # df.to_csv('data/full_data.csv')
+
+    df = pd.read_csv('data/full_data.csv')
 
     # plot_prod(df)
     # plot_regr(df)
-    # plot_trend(df)
+    plot_trend(df)
     # correlation(df, plt_type='heat')
     # correlation(df, plt_type='scatter')
