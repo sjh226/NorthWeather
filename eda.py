@@ -74,30 +74,30 @@ def plot_regr(df):
     m, c = np.linalg.lstsq(mat, line_df['prod_diff'])[0]
     plt.plot(line_df['temp_diff'], m * line_df['temp_diff'] + c, 'r', label='Regression')
 
-    plt.title('Temperature Change Influence on Production')
+    plt.title('Temperature Change Influence on Production (Limited to Dec-Mar)')
     plt.xlabel('Change in Temperature (°F/day)')
     plt.ylabel('Change in Production (mcf/day)')
     plt.legend()
 
-    plt.savefig('figures/change.png')
+    plt.savefig('figures/change_winter.png')
 
 def plot_trend(df):
     plt.close()
     fig, ax = plt.subplots(1, 1, figsize=(12, 10))
 
-    ax.scatter(df['min_humidity'], df['production'], label='Daily Production')
+    ax.scatter(df['mean_temperature'], df['production'], label='Daily Production')
 
     line_df = df.dropna()
-    mat = np.vstack([line_df['min_humidity'], np.ones(line_df.shape[0])]).T
+    mat = np.vstack([line_df['mean_temperature'], np.ones(line_df.shape[0])]).T
     m, c = np.linalg.lstsq(mat, line_df['production'])[0]
-    plt.plot(line_df['min_humidity'], m * line_df['min_humidity'] + c, 'r', label='Regression')
+    plt.plot(line_df['mean_temperature'], m * line_df['mean_temperature'] + c, 'r', label='Regression')
 
-    plt.title('Humidity Influence on Production')
-    plt.xlabel('Humidity (%)')
+    plt.title('Temperature Influence on Production (Limited to Dec-Mar)')
+    plt.xlabel('Temperature (°F)')
     plt.ylabel('Production (mcf)')
     plt.legend()
 
-    plt.savefig('figures/prod_trend_humidity.png')
+    plt.savefig('figures/prod_trend_winter.png')
 
 def correlation(df, plt_type='heat'):
     plt.close()
@@ -120,8 +120,7 @@ def correlation(df, plt_type='heat'):
         plt.xticks(range(len(corr.columns)), corr.columns, rotation='vertical')
         plt.yticks(range(len(corr.columns)), corr.columns)
         fig.colorbar(cax)
-        plt.title('Correlation Between Production and Weather Data', y=1.2)
-        print(s[:20])
+        plt.title('Correlation Between Production and Weather Data', y=1.31)
 
     elif plt_type.lower() == 'scatter':
         corr_df = df[['date', 'production', 'max_temperature', \
@@ -132,7 +131,7 @@ def correlation(df, plt_type='heat'):
 
     plt.tight_layout()
 
-    plt.savefig('figures/corr_{}_trend.png'.format(plt_type))
+    plt.savefig('figures/corr_{}_winter.png'.format(plt_type))
 
 
 if __name__ == '__main__':
@@ -141,9 +140,16 @@ if __name__ == '__main__':
     # df.to_csv('data/full_data.csv')
 
     df = pd.read_csv('data/full_data.csv')
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.drop('Unnamed: 0', axis=1)
 
-    # plot_prod(df)
-    # plot_regr(df)
-    plot_trend(df)
-    # correlation(df, plt_type='heat')
+    winter_df = df[(df['date'].dt.month == 12) | \
+                   (df['date'].dt.month == 1) | \
+                   (df['date'].dt.month == 2) | \
+                   (df['date'].dt.month == 3)]
+
+    # plot_prod(winter_df)
+    # plot_regr(winter_df)
+    # plot_trend(winter_df)
+    correlation(winter_df, plt_type='heat')
     # correlation(df, plt_type='scatter')
