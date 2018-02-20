@@ -1,10 +1,23 @@
 import pandas as pd
 import numpy as np
 import pyodbc
+import scipy.stats as stats
 
 
 def winterize(df):
-    pass
+    pre_df = df[(df['DateKey'] >= '2016-01-01') & (df['DateKey'] <= '2016-04-01')]
+    wint_df = df[(df['DateKey'] >= '2017-01-01') & (df['DateKey'] <= '2017-04-01')]
+
+    a_samp = pre_df['Gas']
+    b_samp = wint_df['Gas']
+
+    t_cal = (b_samp.mean() - a_samp.mean()) / \
+        ((((a_samp.std() ** 2)/len(a_samp)) + \
+        ((b_samp.std() ** 2)/len(b_samp))) ** .5)
+    t, p = stats.ttest_ind(a_samp, b_samp, equal_var=False)
+    print('Results for API: {}'.format(df['API'].unique()[0]))
+    print('Resulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
+            .format(t, p, t_cal))
 
 def prod_pull(api):
     	try:
@@ -66,3 +79,4 @@ if __name__ == '__main__':
         p_df = prod_pull(api)
         w_df = pd.read_csv('data/WeatherCompany/{}_HistoricalData.csv'.format(loc))
         df = link_data(w_df, p_df)
+        winterize(df)
