@@ -87,11 +87,11 @@ def prod_pull():
 def winter_split(df):
 	pre_df = df[(df['DateKey'] >= '2016-12-01') & \
 				(df['DateKey'] <= '2017-02-22') & \
-				(df['maximumdrybulbtemp'] <= 32)]
+				(df['maximumdrybulbtemp'] <= 25)]
 
 	wint_df = df[(df['DateKey'] >= '2017-12-01') & \
 				 (df['DateKey'] <= '2018-02-22') & \
-				 (df['maximumdrybulbtemp'] <= 32)]
+				 (df['maximumdrybulbtemp'] <= 25)]
 
 	a_b_test(pre_df, wint_df)
 
@@ -106,9 +106,12 @@ def a_b_test(a, b):
 	print('Results for WellFlac: {}'.format(a['WellFlac'].unique()[0]))
 	print('Resulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
 			.format(t, p, t_cal))
-	with open('testing/extreme_temp_test.txt', 'a+') as text_file:
-		text_file.write('Results for WellFlac: {}\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n\n'\
+	with open('testing/extreme_temp_test_25.txt', 'a+') as text_file:
+		text_file.write('Results for WellFlac: {}\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
 						 .format(a['WellFlac'].unique()[0], t, p, t_cal))
+		if p <= 0.05:
+			text_file.write('Significant p-value!')
+		text_file.write('\n\n')
 
 
 if __name__ == '__main__':
@@ -121,7 +124,7 @@ if __name__ == '__main__':
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 	df.drop('date', axis=1, inplace=True)
 
-	with open('testing/extreme_temp_test.txt', 'w') as text_file:
+	with open('testing/extreme_temp_test_25.txt', 'w') as text_file:
 		text_file.write('')
 
 	for flac in df['WellFlac'].unique():
