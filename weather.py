@@ -5,8 +5,8 @@ import scipy.stats as stats
 
 
 def winterize(df):
-    pre_df = df[(df['DateKey'] >= '2016-01-01') & (df['DateKey'] <= '2016-04-01')]
-    wint_df = df[(df['DateKey'] >= '2017-01-01') & (df['DateKey'] <= '2017-04-01')]
+    pre_df = df[(df['DateKey'] >= '2016-10-01') & (df['DateKey'] <= '2016-12-31') & (df['Gas'].notnull())]
+    wint_df = df[(df['DateKey'] >= '2017-10-01') & (df['DateKey'] <= '2017-12-31') & (df['Gas'].notnull())]
 
     a_samp = pre_df['Gas']
     b_samp = wint_df['Gas']
