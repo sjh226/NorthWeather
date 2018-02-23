@@ -38,62 +38,109 @@ def clean(df):
 
 	return clean_df
 
-def prod_pull():
-		try:
-			connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
-										r'Server=SQLDW-L48.BP.Com;'
-										r'Database=OperationsDataMart;'
-										r'trusted_connection=yes'
-										)
-		except pyodbc.Error:
-			print("Connection Error")
-			sys.exit()
+def prod_pull(date):
+	if date == '2017-12-01':
+		flacs = "('73510201', '74063101', '74026803', '73566301', \
+				  '73560001', '74028201', '74472201', '74371703', \
+				  '73590001', '73613701', '73670701')"
+	elif date == '2017-12-15':
+		flacs = "('73510201', '74063101', '74026803', '73566301', \
+				  '73560001', '74028201', '74472201', '74371703', \
+				  '73590001', '73613701', '73670701', '74059703', \
+				  '74012501', '74012001', '74594001', '74030903', \
+				  '73881101', '73885601')"
+	elif date == '2018-01-10':
+		flacs = "('73510201', '74063101', '74026803', '73566301', \
+				  '73560001', '74028201', '74472201', '74371703', \
+				  '73590001', '73613701', '73670701', '74059703', \
+				  '74012501', '74012001', '74594001', '74030903', \
+				  '73881101', '73885601', '73509201', '74592301', \
+				  '74472901', '74623401', '73671401', '73593001', \
+				  '73908801', '73921801', '74030403', '74019001', \
+				  '74019501')"
+	elif date == '2018-01-16':
+		flacs = "('73510201', '74063101', '74026803', '73566301', \
+				  '73560001', '74028201', '74472201', '74371703', \
+				  '73590001', '73613701', '73670701', '74059703', \
+				  '74012501', '74012001', '74594001', '74030903', \
+				  '73881101', '73885601', '73509201', '74592301', \
+				  '74472901', '74623401', '73671401', '73593001', \
+				  '73908801', '73921801', '74030403', '74019001', \
+				  '74019501', '74937104', '74729803', '74025303', \
+				  '74032103', '74622901', '73881801', '74744601', \
+				  '73923201', '73939601', '74766801', '74593603', \
+				  '74204804', '74473103', '74059401', '74371003', \
+				  '73897201', '73896601')"
+	elif date == '2018-01-23':
+		flacs = "('73510201', '74063101', '74026803', '73566301', \
+				  '73560001', '74028201', '74472201', '74371703', \
+				  '73590001', '73613701', '73670701', '74059703', \
+				  '74012501', '74012001', '74594001', '74030903', \
+				  '73881101', '73885601', '73509201', '74592301', \
+				  '74472901', '74623401', '73671401', '73593001', \
+				  '73908801', '73921801', '74030403', '74019001', \
+				  '74019501', '74937104', '74729803', '74025303', \
+				  '74032103', '74622901', '73881801', '74744601', \
+				  '73923201', '73939601', '74766801', '74593603', \
+				  '74204804', '74473103', '74059401', '74371003', \
+				  '73897201', '73896601', '73218401', '74591701', \
+				  '73509801', '74839003', '74709503', '73405501', \
+				  '74115503', '74069803', '74813901', '73898301', \
+				  '73899601', '73676201')"
 
-		cursor = connection.cursor()
+	try:
+		connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
+									r'Server=SQLDW-L48.BP.Com;'
+									r'Database=OperationsDataMart;'
+									r'trusted_connection=yes'
+									)
+	except pyodbc.Error:
+		print("Connection Error")
+		sys.exit()
 
-		SQLCommand = ("""
-		   SELECT W.WellFlac
-				  ,W.API
-				  ,P.DateKey
-				  ,P.Oil
-				  ,P.Gas
-				  ,P.Water
-				  ,P.LinePressure
-				  ,P.TubingPressure
-				  ,P.CasingPressure
-			  FROM [OperationsDataMart].[Facts].[Production] P
-			  JOIN [OperationsDataMart].[Dimensions].[Wells] W
-				ON W.Wellkey = P.Wellkey
-			  WHERE W.BusinessUnit = 'North'
-			  AND W.WellFlac IN ('73510201', '74063101', '74026803', '73566301', \
-								 '73560001', '74028201', '74472201', '74371703', \
-								 '73590001', '73613701', '73670701');
-		""")
+	cursor = connection.cursor()
 
-		cursor.execute(SQLCommand)
-		results = cursor.fetchall()
+	SQLCommand = ("""
+	   SELECT W.WellFlac
+	   		  ,W.WellName
+			  ,W.API
+			  ,P.DateKey
+			  ,P.Oil
+			  ,P.Gas
+			  ,P.Water
+			  ,P.LinePressure
+			  ,P.TubingPressure
+			  ,P.CasingPressure
+		  FROM [OperationsDataMart].[Facts].[Production] P
+		  JOIN [OperationsDataMart].[Dimensions].[Wells] W
+			ON W.Wellkey = P.Wellkey
+		  WHERE W.BusinessUnit = 'North'
+		  AND W.WellFlac IN {};
+	""".format(flacs))
 
-		df = pd.DataFrame.from_records(results)
-		connection.close()
+	cursor.execute(SQLCommand)
+	results = cursor.fetchall()
 
-		try:
-			df.columns = pd.DataFrame(np.matrix(cursor.description))[0]
-		except:
-			df = None
-			print('Dataframe is empty')
+	df = pd.DataFrame.from_records(results)
+	connection.close()
 
-		return df
+	try:
+		df.columns = pd.DataFrame(np.matrix(cursor.description))[0]
+	except:
+		df = None
+		print('Dataframe is empty')
+
+	return df
 
 def winter_split(df):
-	pre_df = df[(df['DateKey'] >= '2016-12-01') & \
-				(df['DateKey'] <= '2017-02-22') & \
-				(df['maximumdrybulbtemp'] <= 25)]
+	pre_df = df[(df['DateKey'] <= '2017-02-22') & \
+				(df['maximumdrybulbtemp'] <= 32)]
 
 	wint_df = df[(df['DateKey'] >= '2017-12-01') & \
 				 (df['DateKey'] <= '2018-02-22') & \
-				 (df['maximumdrybulbtemp'] <= 25)]
+				 (df['maximumdrybulbtemp'] <= 32)]
 
-	a_b_test(pre_df, wint_df)
+	a_b_test(pre_df, wint_df, 'extreme_temp_test_32')
 
 def rolling_split(df, days):
 	pre_df = df[(df['DateKey'] >= '2016-12-01') & \
@@ -104,9 +151,9 @@ def rolling_split(df, days):
 				 (df['DateKey'] <= '2018-02-22') & \
 				 (df['max_{}_day'.format(days)] <= 32)]
 
-	a_b_test(pre_df, wint_df)
+	a_b_test(pre_df, wint_df, 'rolling3_temp_test_32')
 
-def a_b_test(a, b):
+def a_b_test(a, b, test_type):
 	a_samp = a['Gas']
 	b_samp = b['Gas']
 
@@ -117,9 +164,9 @@ def a_b_test(a, b):
 	# print('Results for WellFlac: {}'.format(a['WellFlac'].unique()[0]))
 	# print('Resulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
 	# 		.format(t, p, t_cal))
-	with open('testing/rolling3_temp_test_32.txt', 'a+') as text_file:
-		text_file.write('Results for WellFlac: {}\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
-						 .format(a['WellFlac'].unique()[0], t, p, t_cal))
+	with open('testing/{}.txt'.format(test_type), 'a+') as text_file:
+		text_file.write('Results for WellFlac: {} ({})\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
+						 .format(a['WellFlac'].unique()[0], a['WellName'].unique()[0], t, p, t_cal))
 		if p <= 0.05:
 			text_file.write('Significant p-value!')
 		text_file.write('\n\n')
@@ -135,19 +182,19 @@ if __name__ == '__main__':
 	weather_df = pd.read_csv('data/hourly.csv', dtype=str)
 	weather_df = clean(weather_df)
 
-	prod_df = prod_pull()
+	prod_df = prod_pull('2017-12-01')
 	prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
 
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 
 	df.drop('date', axis=1, inplace=True)
 
-	with open('testing/rolling3_temp_test_32.txt', 'w') as text_file:
+	with open('testing/extreme_temp_test_32.txt', 'w') as text_file:
 		text_file.write('')
 
 	cluster_df = pd.DataFrame(columns=df.columns)
 	for flac in df['WellFlac'].unique():
-		# winter_split(df[df['WellFlac'] == flac])
+		winter_split(df[df['WellFlac'] == flac])
 		event_df = ex_events(df[df['WellFlac'] == flac])
 		cluster_df = cluster_df.append(event_df)
-		rolling_split(event_df, days=3)
+		# rolling_split(event_df, days=3)
