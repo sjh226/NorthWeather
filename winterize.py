@@ -95,6 +95,17 @@ def winter_split(df):
 
 	a_b_test(pre_df, wint_df)
 
+def rolling_split(df, days):
+	pre_df = df[(df['DateKey'] >= '2016-12-01') & \
+				(df['DateKey'] <= '2017-02-22') & \
+				(df['max_{}_day'.format(days)] <= 32)]
+
+	wint_df = df[(df['DateKey'] >= '2017-12-01') & \
+				 (df['DateKey'] <= '2018-02-22') & \
+				 (df['max_{}_day'.format(days)] <= 32)]
+
+	a_b_test(pre_df, wint_df)
+
 def a_b_test(a, b):
 	a_samp = a['Gas']
 	b_samp = b['Gas']
@@ -103,15 +114,21 @@ def a_b_test(a, b):
 		((((a_samp.std() ** 2)/len(a_samp)) + \
 		((b_samp.std() ** 2)/len(b_samp))) ** .5)
 	t, p = stats.ttest_ind(a_samp, b_samp, equal_var=False)
-	print('Results for WellFlac: {}'.format(a['WellFlac'].unique()[0]))
-	print('Resulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
-			.format(t, p, t_cal))
-	with open('testing/extreme_temp_test_25.txt', 'a+') as text_file:
+	# print('Results for WellFlac: {}'.format(a['WellFlac'].unique()[0]))
+	# print('Resulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
+	# 		.format(t, p, t_cal))
+	with open('testing/rolling3_temp_test_32.txt', 'a+') as text_file:
 		text_file.write('Results for WellFlac: {}\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
 						 .format(a['WellFlac'].unique()[0], t, p, t_cal))
 		if p <= 0.05:
 			text_file.write('Significant p-value!')
 		text_file.write('\n\n')
+
+def ex_events(df):
+	df.loc[:,'max_5_day'] = df['maximumdrybulbtemp'].rolling(5).max()
+	df.loc[:,'max_3_day'] = df['maximumdrybulbtemp'].rolling(3).max()
+
+	return df
 
 
 if __name__ == '__main__':
@@ -122,10 +139,15 @@ if __name__ == '__main__':
 	prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
 
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
+
 	df.drop('date', axis=1, inplace=True)
 
-	with open('testing/extreme_temp_test_25.txt', 'w') as text_file:
+	with open('testing/rolling3_temp_test_32.txt', 'w') as text_file:
 		text_file.write('')
 
+	cluster_df = pd.DataFrame(columns=df.columns)
 	for flac in df['WellFlac'].unique():
-		winter_split(df[df['WellFlac'] == flac])
+		# winter_split(df[df['WellFlac'] == flac])
+		event_df = ex_events(df[df['WellFlac'] == flac])
+		cluster_df = cluster_df.append(event_df)
+		rolling_split(event_df, days=3)
