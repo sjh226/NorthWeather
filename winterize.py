@@ -39,54 +39,14 @@ def clean(df):
 	return clean_df
 
 def prod_pull(date):
-	if date == '2017-12-01':
-		flacs = "('73510201', '74063101', '74026803', '73566301', \
-				  '73560001', '74028201', '74472201', '74371703', \
-				  '73590001', '73613701', '73670701')"
-	elif date == '2017-12-15':
-		flacs = "('73510201', '74063101', '74026803', '73566301', \
-				  '73560001', '74028201', '74472201', '74371703', \
-				  '73590001', '73613701', '73670701', '74059703', \
-				  '74012501', '74012001', '74594001', '74030903', \
-				  '73881101', '73885601')"
-	elif date == '2018-01-10':
-		flacs = "('73510201', '74063101', '74026803', '73566301', \
-				  '73560001', '74028201', '74472201', '74371703', \
-				  '73590001', '73613701', '73670701', '74059703', \
-				  '74012501', '74012001', '74594001', '74030903', \
-				  '73881101', '73885601', '73509201', '74592301', \
-				  '74472901', '74623401', '73671401', '73593001', \
-				  '73908801', '73921801', '74030403', '74019001', \
-				  '74019501')"
-	elif date == '2018-01-16':
-		flacs = "('73510201', '74063101', '74026803', '73566301', \
-				  '73560001', '74028201', '74472201', '74371703', \
-				  '73590001', '73613701', '73670701', '74059703', \
-				  '74012501', '74012001', '74594001', '74030903', \
-				  '73881101', '73885601', '73509201', '74592301', \
-				  '74472901', '74623401', '73671401', '73593001', \
-				  '73908801', '73921801', '74030403', '74019001', \
-				  '74019501', '74937104', '74729803', '74025303', \
-				  '74032103', '74622901', '73881801', '74744601', \
-				  '73923201', '73939601', '74766801', '74593603', \
-				  '74204804', '74473103', '74059401', '74371003', \
-				  '73897201', '73896601')"
-	elif date == '2018-01-23':
-		flacs = "('73510201', '74063101', '74026803', '73566301', \
-				  '73560001', '74028201', '74472201', '74371703', \
-				  '73590001', '73613701', '73670701', '74059703', \
-				  '74012501', '74012001', '74594001', '74030903', \
-				  '73881101', '73885601', '73509201', '74592301', \
-				  '74472901', '74623401', '73671401', '73593001', \
-				  '73908801', '73921801', '74030403', '74019001', \
-				  '74019501', '74937104', '74729803', '74025303', \
-				  '74032103', '74622901', '73881801', '74744601', \
-				  '73923201', '73939601', '74766801', '74593603', \
-				  '74204804', '74473103', '74059401', '74371003', \
-				  '73897201', '73896601', '73218401', '74591701', \
-				  '73509801', '74839003', '74709503', '73405501', \
-				  '74115503', '74069803', '74813901', '73898301', \
-				  '73899601', '73676201')"
+	api_data = pd.read_csv('data/buyback_api.csv')
+	api_data.loc[api_data['Functioning Date'] != 'TBD', 'date'] = \
+		pd.to_datetime(api_data[api_data['Functioning Date'] != 'TBD']['Functioning Date'], format='%m/%d/%Y')
+
+	apis = api_data[api_data['date'] >= date]['API'].values.astype(str)
+
+	placeholder = '?'
+	placeholders = ', '.join(placeholder for api in apis)
 
 	try:
 		connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
@@ -115,10 +75,12 @@ def prod_pull(date):
 		  JOIN [OperationsDataMart].[Dimensions].[Wells] W
 			ON W.Wellkey = P.Wellkey
 		  WHERE W.BusinessUnit = 'North'
-		  AND W.WellFlac IN {};
-	""".format(flacs))
+		  AND W.WellFlac IN (%s);
+	""" %placeholders)
 
-	cursor.execute(SQLCommand)
+	print(SQLCommand, (api for api in apis))
+
+	cursor.execute(SQLCommand, [api for api in apis])
 	results = cursor.fetchall()
 
 	df = pd.DataFrame.from_records(results)
@@ -132,15 +94,15 @@ def prod_pull(date):
 
 	return df
 
-def winter_split(df):
+def winter_split(df, date):
 	pre_df = df[(df['DateKey'] <= '2017-02-22') & \
 				(df['maximumdrybulbtemp'] <= 32)]
 
-	wint_df = df[(df['DateKey'] >= '2017-12-01') & \
+	wint_df = df[(df['DateKey'] >= date) & \
 				 (df['DateKey'] <= '2018-02-22') & \
 				 (df['maximumdrybulbtemp'] <= 32)]
 
-	a_b_test(pre_df, wint_df, 'extreme_temp_test_32')
+	a_b_test(pre_df, wint_df, 'extreme_temp_test_32_all')
 
 def rolling_split(df, days):
 	pre_df = df[(df['DateKey'] >= '2016-12-01') & \
@@ -170,6 +132,9 @@ def a_b_test(a, b, test_type):
 		if p <= 0.05:
 			text_file.write('Significant p-value!')
 		text_file.write('\n\n')
+	if p <= 0.05:
+		with open('testing/significant.txt', 'w') as text_file:
+			text_file.write('{}\n'.format(a['WellName'].unique()[0]))
 
 def ex_events(df):
 	df.loc[:,'max_5_day'] = df['maximumdrybulbtemp'].rolling(5).max()
@@ -182,19 +147,20 @@ if __name__ == '__main__':
 	weather_df = pd.read_csv('data/hourly.csv', dtype=str)
 	weather_df = clean(weather_df)
 
-	prod_df = prod_pull('2017-12-01')
+	date = '2018-01-23'
+	prod_df = prod_pull(date)
 	prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
 
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 
 	df.drop('date', axis=1, inplace=True)
 
-	with open('testing/extreme_temp_test_32.txt', 'w') as text_file:
+	with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
 		text_file.write('')
 
 	cluster_df = pd.DataFrame(columns=df.columns)
 	for flac in df['WellFlac'].unique():
-		winter_split(df[df['WellFlac'] == flac])
+		winter_split(df[df['WellFlac'] == flac], date)
 		event_df = ex_events(df[df['WellFlac'] == flac])
 		cluster_df = cluster_df.append(event_df)
 		# rolling_split(event_df, days=3)
