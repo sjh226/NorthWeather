@@ -43,10 +43,10 @@ def prod_pull(date):
 	api_data.loc[api_data['Functioning Date'] != 'TBD', 'date'] = \
 		pd.to_datetime(api_data[api_data['Functioning Date'] != 'TBD']['Functioning Date'], format='%m/%d/%Y')
 
-	apis = api_data[api_data['date'] >= date]['API'].values.astype(str)
+	apis = api_data[api_data['date'] <= date]['API'].values.astype(str)
 
-	placeholder = '?'
-	placeholders = ', '.join(placeholder for api in apis)
+	sql_apis = "', '".join(apis)
+	str_apis = "'" + sql_apis + "'"
 
 	try:
 		connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
@@ -75,12 +75,10 @@ def prod_pull(date):
 		  JOIN [OperationsDataMart].[Dimensions].[Wells] W
 			ON W.Wellkey = P.Wellkey
 		  WHERE W.BusinessUnit = 'North'
-		  AND W.WellFlac IN (%s);
-	""" %placeholders)
+		  AND W.API IN (%s);
+	""" %str_apis)
 
-	print(SQLCommand, (api for api in apis))
-
-	cursor.execute(SQLCommand, [api for api in apis])
+	cursor.execute(SQLCommand)
 	results = cursor.fetchall()
 
 	df = pd.DataFrame.from_records(results)
@@ -102,7 +100,7 @@ def winter_split(df, date):
 				 (df['DateKey'] <= '2018-02-22') & \
 				 (df['maximumdrybulbtemp'] <= 32)]
 
-	a_b_test(pre_df, wint_df, 'extreme_temp_test_32_all')
+	return a_b_test(pre_df, wint_df, 'extreme_temp_test_32_all')
 
 def rolling_split(df, days):
 	pre_df = df[(df['DateKey'] >= '2016-12-01') & \
@@ -113,28 +111,39 @@ def rolling_split(df, days):
 				 (df['DateKey'] <= '2018-02-22') & \
 				 (df['max_{}_day'.format(days)] <= 32)]
 
-	a_b_test(pre_df, wint_df, 'rolling3_temp_test_32')
+	return a_b_test(pre_df, wint_df, 'rolling3_temp_test_32')
 
 def a_b_test(a, b, test_type):
 	a_samp = a['Gas']
 	b_samp = b['Gas']
 
-	t_cal = (b_samp.mean() - a_samp.mean()) / \
-		((((a_samp.std() ** 2)/len(a_samp)) + \
-		((b_samp.std() ** 2)/len(b_samp))) ** .5)
+	try:
+		t_cal = (b_samp.mean() - a_samp.mean()) / \
+			((((a_samp.std() ** 2)/len(a_samp)) + \
+			((b_samp.std() ** 2)/len(b_samp))) ** .5)
+	except ZeroDivisionError:
+		t_cal = 0
 	t, p = stats.ttest_ind(a_samp, b_samp, equal_var=False)
-	# print('Results for WellFlac: {}'.format(a['WellFlac'].unique()[0]))
-	# print('Resulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
-	# 		.format(t, p, t_cal))
-	with open('testing/{}.txt'.format(test_type), 'a+') as text_file:
-		text_file.write('Results for WellFlac: {} ({})\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
-						 .format(a['WellFlac'].unique()[0], a['WellName'].unique()[0], t, p, t_cal))
-		if p <= 0.05:
-			text_file.write('Significant p-value!')
-		text_file.write('\n\n')
-	if p <= 0.05:
-		with open('testing/significant.txt', 'w') as text_file:
-			text_file.write('{}\n'.format(a['WellName'].unique()[0]))
+
+	test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
+	test_df = test_df.append({'WellFlac': a['WellFlac'].unique()[0], \
+							  'WellName': a['WellName'].unique()[0], \
+							  'API': a['API'].unique()[0], \
+							  'p-value': p, \
+							  'Significant': 'yes' if p <= 0.05 else 'no'}, \
+							  ignore_index=True)
+
+	# with open('testing/{}.txt'.format(test_type), 'a+') as text_file:
+	# 	text_file.write('Results for WellFlac: {} ({})\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
+	# 					 .format(a['WellFlac'].unique()[0], a['WellName'].unique()[0], t, p, t_cal))
+	# 	if p <= 0.05:
+	# 		text_file.write('Significant p-value!')
+	# 	text_file.write('\n\n')
+	# if p <= 0.05:
+	# 	with open('testing/significant.txt', 'w') as text_file:
+	# 		text_file.write('{}\n'.format(a['WellName'].unique()[0]))
+
+	return test_df
 
 def ex_events(df):
 	df.loc[:,'max_5_day'] = df['maximumdrybulbtemp'].rolling(5).max()
@@ -155,12 +164,15 @@ if __name__ == '__main__':
 
 	df.drop('date', axis=1, inplace=True)
 
-	with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
-		text_file.write('')
+	# with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
+	# 	text_file.write('')
 
 	cluster_df = pd.DataFrame(columns=df.columns)
+	test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
+	roll_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
+
 	for flac in df['WellFlac'].unique():
-		winter_split(df[df['WellFlac'] == flac], date)
+		test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
 		event_df = ex_events(df[df['WellFlac'] == flac])
 		cluster_df = cluster_df.append(event_df)
-		# rolling_split(event_df, days=3)
+		roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
