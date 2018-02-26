@@ -45,8 +45,8 @@ def prod_pull(date):
 
 	apis = api_data[api_data['date'] >= date]['API'].values.astype(str)
 
-	placeholder = '?'
-	placeholders = ', '.join(placeholder for api in apis)
+	sql_apis = "', '".join(apis)
+	str_apis = "'" + sql_apis + "'"
 
 	try:
 		connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
@@ -75,12 +75,12 @@ def prod_pull(date):
 		  JOIN [OperationsDataMart].[Dimensions].[Wells] W
 			ON W.Wellkey = P.Wellkey
 		  WHERE W.BusinessUnit = 'North'
-		  AND W.WellFlac IN (%s);
-	""" %placeholders)
+		  AND W.API IN (%s);
+	""" %str_apis)
 
-	print(SQLCommand, (api for api in apis))
+	print(SQLCommand)
 
-	cursor.execute(SQLCommand, [api for api in apis])
+	cursor.execute(SQLCommand)
 	results = cursor.fetchall()
 
 	df = pd.DataFrame.from_records(results)
