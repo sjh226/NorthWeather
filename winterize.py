@@ -3,6 +3,7 @@ import numpy as np
 import pyodbc
 import sys
 import scipy.stats as stats
+import matplotlib.pyplot as plt
 
 
 def clean(df):
@@ -64,6 +65,8 @@ def prod_pull(date):
 	   SELECT W.WellFlac
 	   		  ,W.WellName
 			  ,W.API
+			  ,W.Latitude
+			  ,W.Longitude
 			  ,P.DateKey
 			  ,P.Oil
 			  ,P.Gas
@@ -93,7 +96,7 @@ def prod_pull(date):
 	return df
 
 def winter_split(df, date):
-	pre_df = df[(df['DateKey'] <= '2017-02-22') & \
+	pre_df = df[(df['DateKey'] <= '2017-03-31') & \
 				(df['maximumdrybulbtemp'] <= 32)]
 
 	wint_df = df[(df['DateKey'] >= date) & \
@@ -151,6 +154,34 @@ def ex_events(df):
 
 	return df
 
+def loc_plot(df, date):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+	pre_df = df[(df['DateKey'] <= '2017-03-31') & \
+				(df['maximumdrybulbtemp'] <= 32)][['WellFlac', 'WellName', 'Latitude', 'Longitude', 'Gas']]
+	pre_df = pre_df.groupby(['WellFlac', 'WellName', 'Latitude', 'Longitude'], as_index=False).mean()
+	pre_df.rename(index=str, columns={'Gas': 'PreGas'}, inplace=True)
+
+	wint_df = df[(df['DateKey'] >= date) & \
+				 (df['DateKey'] <= '2018-02-22') & \
+				 (df['maximumdrybulbtemp'] <= 32)][['WellFlac', 'WellName', 'Latitude', 'Longitude', 'Gas']]
+	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'Latitude', 'Longitude'], as_index=False).mean()
+
+	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'Latitude', 'Longitude'])
+	plot_df.loc[:, 'Difference'] = plot_df['Gas'] - plot_df['PreGas']
+
+	ax.scatter(plot_df[plot_df['Difference'] > 0]['Longitude'], plot_df[plot_df['Difference'] > 0]['Latitude'], s=50, color='black', label='Positive Wells')
+	ax.scatter(plot_df[plot_df['Difference'] < 0]['Longitude'], plot_df[plot_df['Difference'] < 0]['Latitude'], s=30, color='red', label='Negative Wells')
+
+	plt.xticks(rotation='vertical')
+	plt.xlabel('Longitude')
+	plt.ylabel('Latitude')
+	plt.title('Below Freezing Well Performance')
+	plt.legend()
+
+	plt.savefig('figures/location_plot.png')
+
 
 if __name__ == '__main__':
 	weather_df = pd.read_csv('data/hourly.csv', dtype=str)
@@ -164,6 +195,8 @@ if __name__ == '__main__':
 
 	df.drop('date', axis=1, inplace=True)
 
+	loc_plot(df, date)
+
 	# with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
 	# 	text_file.write('')
 
@@ -171,8 +204,8 @@ if __name__ == '__main__':
 	test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
 	roll_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
 
-	for flac in df['WellFlac'].unique():
-		test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
-		event_df = ex_events(df[df['WellFlac'] == flac])
-		cluster_df = cluster_df.append(event_df)
-		roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
+	# for flac in df['WellFlac'].unique():
+	# 	test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
+	# 	event_df = ex_events(df[df['WellFlac'] == flac])
+	# 	cluster_df = cluster_df.append(event_df)
+	# 	roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
