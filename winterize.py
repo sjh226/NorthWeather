@@ -182,6 +182,32 @@ def loc_plot(df, date):
 
 	plt.savefig('figures/location_plot.png')
 
+def bar_chart(df):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+	pre_df = df[(df['DateKey'] <= '2017-03-31') & \
+				(df['maximumdrybulbtemp'] <= 32)][['WellFlac', 'WellName', 'Latitude', 'Longitude', 'Gas']]
+	pre_df = pre_df.groupby(['WellFlac', 'WellName', 'Latitude', 'Longitude'], as_index=False).mean()
+	pre_df.rename(index=str, columns={'Gas': 'PreGas'}, inplace=True)
+
+	wint_df = df[(df['DateKey'] >= date) & \
+				 (df['DateKey'] <= '2018-02-22') & \
+				 (df['maximumdrybulbtemp'] <= 32)][['WellFlac', 'WellName', 'Latitude', 'Longitude', 'Gas']]
+	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'Latitude', 'Longitude'], as_index=False).mean()
+
+	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'Latitude', 'Longitude'])
+	plot_df.loc[:, 'Difference'] = plot_df['Gas'] - plot_df['PreGas']
+	plot_df.sort_values('Difference', inplace=True)
+
+	ax.bar(plot_df['WellName'], plot_df['Difference'], color='bwr')
+
+	plt.xlabel('Wells')
+	plt.ylabel('Difference From Before Winterization')
+	plt.title('Below Freezing Well Performance')
+
+	plt.savefig('figures/bar_plot.png')
+
 
 if __name__ == '__main__':
 	weather_df = pd.read_csv('data/hourly.csv', dtype=str)
@@ -195,7 +221,8 @@ if __name__ == '__main__':
 
 	df.drop('date', axis=1, inplace=True)
 
-	loc_plot(df, date)
+	# loc_plot(df, date)
+	bar_chart(df)
 
 	# with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
 	# 	text_file.write('')
