@@ -171,6 +171,8 @@ def loc_plot(df, date):
 	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'Latitude', 'Longitude'])
 	plot_df.loc[:, 'Difference'] = plot_df['Gas'] - plot_df['PreGas']
 
+	print(plot_df['Difference'].mean())
+
 	ax.scatter(plot_df[plot_df['Difference'] > 0]['Longitude'], plot_df[plot_df['Difference'] > 0]['Latitude'], s=50, color='black', label='Positive Wells')
 	ax.scatter(plot_df[plot_df['Difference'] < 0]['Longitude'], plot_df[plot_df['Difference'] < 0]['Latitude'], s=30, color='red', label='Negative Wells')
 
@@ -199,8 +201,11 @@ def bar_chart(df):
 	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'Latitude', 'Longitude'])
 	plot_df.loc[:, 'Difference'] = plot_df['Gas'] - plot_df['PreGas']
 	plot_df.sort_values('Difference', inplace=True)
+	plot_df['pos'] = plot_df['Difference'] >= 0
 
-	ax.bar(plot_df['WellName'], plot_df['Difference'], color='bwr')
+	ax.bar(np.arange(plot_df.shape[0]), plot_df['Difference'], 1, \
+		   color=plot_df['pos'].map({True: 'r', False:'b'}))
+	ax.set_xticklabels([])
 
 	plt.xlabel('Wells')
 	plt.ylabel('Difference From Before Winterization')
@@ -213,7 +218,7 @@ if __name__ == '__main__':
 	weather_df = pd.read_csv('data/hourly.csv', dtype=str)
 	weather_df = clean(weather_df)
 
-	date = '2018-01-23'
+	date = '2018-01-01'
 	prod_df = prod_pull(date)
 	prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
 
