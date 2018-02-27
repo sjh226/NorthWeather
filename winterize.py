@@ -171,8 +171,6 @@ def loc_plot(df, date):
 	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'Latitude', 'Longitude'])
 	plot_df.loc[:, 'Difference'] = plot_df['Gas'] - plot_df['PreGas']
 
-	print(plot_df['Difference'].mean())
-
 	ax.scatter(plot_df[plot_df['Difference'] > 0]['Longitude'], plot_df[plot_df['Difference'] > 0]['Latitude'], s=50, color='black', label='Positive Wells')
 	ax.scatter(plot_df[plot_df['Difference'] < 0]['Longitude'], plot_df[plot_df['Difference'] < 0]['Latitude'], s=30, color='red', label='Negative Wells')
 
@@ -228,6 +226,10 @@ if __name__ == '__main__':
 
 	# loc_plot(df, date)
 	bar_chart(df)
+
+	# Problem wells:
+	# Muddy Creek 3
+	# Champlin 452 C
 
 	# with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
 	# 	text_file.write('')
