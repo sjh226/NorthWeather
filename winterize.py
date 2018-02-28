@@ -63,8 +63,9 @@ def prod_pull(date):
 
 	SQLCommand = ("""
 	   SELECT W.WellFlac
-	   		  ,W.WellName
+				 ,W.WellName
 			  ,W.API
+			  ,F.FacilityName
 			  ,W.Latitude
 			  ,W.Longitude
 			  ,P.DateKey
@@ -77,6 +78,8 @@ def prod_pull(date):
 		  FROM [OperationsDataMart].[Facts].[Production] P
 		  JOIN [OperationsDataMart].[Dimensions].[Wells] W
 			ON W.Wellkey = P.Wellkey
+		  JOIN [OperationsDataMart].[Dimensions].[Facilities] F
+			ON F.FacilityKey = W.FacilityKey
 		  WHERE W.BusinessUnit = 'North'
 		  AND W.API IN (%s);
 	""" %str_apis)
@@ -154,33 +157,95 @@ def ex_events(df):
 
 	return df
 
-def loc_plot(df, date):
+def loc_plot(df, date, worst=False):
 	plt.close()
 	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
-	pre_df = df[(df['DateKey'] <= '2017-03-31') & \
-				(df['maximumdrybulbtemp'] <= 32)][['WellFlac', 'WellName', 'Latitude', 'Longitude', 'Gas']]
-	pre_df = pre_df.groupby(['WellFlac', 'WellName', 'Latitude', 'Longitude'], as_index=False).mean()
+	pre_df = df[(df['DateKey'] <= '2017-03-31') & (df['maximumdrybulbtemp'] <= 32)]\
+			   [['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'Gas']]
+	pre_df = pre_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'], as_index=False).mean()
 	pre_df.rename(index=str, columns={'Gas': 'PreGas'}, inplace=True)
 
-	wint_df = df[(df['DateKey'] >= date) & \
-				 (df['DateKey'] <= '2018-02-22') & \
-				 (df['maximumdrybulbtemp'] <= 32)][['WellFlac', 'WellName', 'Latitude', 'Longitude', 'Gas']]
-	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'Latitude', 'Longitude'], as_index=False).mean()
+	wint_df = df[(df['DateKey'] >= date) & (df['DateKey'] <= '2018-03-01') & \
+				 (df['maximumdrybulbtemp'] <= 32)]\
+				 [['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'Gas']]
+	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'], as_index=False).mean()
 
-	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'Latitude', 'Longitude'])
+	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'])
 	plot_df.loc[:, 'Difference'] = plot_df['Gas'] - plot_df['PreGas']
 
-	ax.scatter(plot_df[plot_df['Difference'] > 0]['Longitude'], plot_df[plot_df['Difference'] > 0]['Latitude'], s=50, color='black', label='Positive Wells')
-	ax.scatter(plot_df[plot_df['Difference'] < 0]['Longitude'], plot_df[plot_df['Difference'] < 0]['Latitude'], s=30, color='red', label='Negative Wells')
+	plot_facility = plot_df[['FacilityName', 'Latitude', 'Longitude', 'Difference']]
+	func = {'Latitude': ['mean'], 'Longitude': ['mean'], 'Difference': ['sum']}
+	plot_facility = plot_facility.groupby('FacilityName', as_index=False).agg(func)
+	plot_facility.columns = plot_facility.columns.droplevel(1)
 
-	plt.xticks(rotation='vertical')
+	scat = ax.scatter(plot_facility['Longitude'], plot_facility['Latitude'], \
+			   s=400, c=plot_facility['Difference'], cmap='bwr_r', edgecolor='k')
+
+	top_left = plot_facility[plot_facility['FacilityName'].isin(\
+			   ['Champlin 452 C 70', 'Sourdough 33 10 D', \
+			   'Coal Gulch Road 25 10 D', 'Coal Gulch Road 36 20 D', \
+			   'USA Neal 20 130', 'Frewen 13 70', 'Frewen 23 70', \
+			   'Two Rim 27 30 D', 'Coal Bank 11 60 D', 'Champlin 559 C 10 D'])]
+	top_right = plot_facility[plot_facility['FacilityName'].isin(\
+				['Monument 19 50 D', 'Latham Draw 17 10 D', 'Two Rim 25 100 D', \
+				'Luman 15 20 D'])]
+	bottom_left = plot_facility[plot_facility['FacilityName'].isin(['Muddy Creek 5 40 D'])]
+	bottom_right = plot_facility[plot_facility['FacilityName'].isin(['Muddy Creek 9 100'])]
+	top = plot_facility[plot_facility['FacilityName'].isin(['Muddy Creek 5 10 D'])]
+	topish = plot_facility[plot_facility['FacilityName'].isin(['Muddy Creek 3 150 D'])]
+	worst_df = plot_facility[plot_facility['FacilityName'] == \
+						     plot_facility[plot_facility['Difference'] == \
+						     plot_facility['Difference'].min()]['FacilityName'].unique()[0]]
+
+	if worst:
+		for label, x, y in zip(worst_df['FacilityName'], \
+							   worst_df['Longitude'], \
+							   worst_df['Latitude']):
+			plt.annotate(
+				label,
+				xy=(x, y), xytext=(20, 20),
+				textcoords='offset points', ha='right', va='bottom',
+				bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.5),
+				arrowprops=dict(arrowstyle = '->', connectionstyle='arc3,rad=0'))
+	else:
+		for frame in [top_left, top_right, bottom_left, bottom_right, top, topish]:
+			for label, x, y in zip(frame['FacilityName'], \
+								   frame['Longitude'], \
+								   frame['Latitude']):
+				if frame['FacilityName'].unique().all() == top_left['FacilityName'].unique().all():
+					x1, y1, ha, va = -10, 10, 'right', 'bottom'
+				elif frame['FacilityName'].unique().all() == top_right['FacilityName'].unique().all():
+					x1, y1, ha, va = 20, 20, 'left', 'bottom'
+				elif frame['FacilityName'].unique().all() == bottom_left['FacilityName'].unique().all():
+					x1, y1, ha, va = -20, -20, 'right', 'top'
+				elif frame['FacilityName'].unique().all() == bottom_left['FacilityName'].unique().all():
+					x1, y1, ha, va = 20, -20, 'left', 'top'
+				elif frame['FacilityName'].unique().all() == top['FacilityName'].unique().all():
+					x1, y1, ha, va = -40, 60, 'left', 'top'
+				elif frame['FacilityName'].unique().all() == topish['FacilityName'].unique().all():
+					x1, y1, ha, va = -40, 30, 'left', 'top'
+				plt.annotate(
+					label,
+					xy=(x, y), xytext=(x1, y1),
+					textcoords='offset points', ha=ha, va=va,
+					bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.5),
+					arrowprops=dict(arrowstyle = '->', connectionstyle='arc3,rad=0'))
+
+	cbar = fig.colorbar(scat, ticks=[plot_facility['Difference'].min(), 0, \
+									 plot_facility['Difference'].max()])
+	cbar.ax.set_yticklabels([str(int(plot_facility['Difference'].min())), '0', \
+							 str(int(plot_facility['Difference'].max()))])
+	cbar.set_label('Average Production Difference After Winterization', rotation=270)
+
 	plt.xlabel('Longitude')
 	plt.ylabel('Latitude')
-	plt.title('Below Freezing Well Performance')
-	plt.legend()
+	plt.title('Extreme Weather Well Performance\n(Winterized vs. Not Winterized)')
 
-	plt.savefig('figures/location_plot.png')
+	if worst:
+		plt.savefig('figures/full_location_plot.png')
+	else:
+		plt.savefig('figures/december_location_plot.png')
 
 def bar_chart(df):
 	plt.close()
@@ -224,8 +289,17 @@ if __name__ == '__main__':
 
 	df.drop('date', axis=1, inplace=True)
 
-	# loc_plot(df, date)
-	bar_chart(df)
+	loc_plot(df, date)
+
+	date = '2018-02-07'
+	prod_df = prod_pull(date)
+	prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
+
+	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
+
+	df.drop('date', axis=1, inplace=True)
+	loc_plot(df, date, worst=True)
+	# bar_chart(df)
 
 	# Problem wells:
 	# Muddy Creek 3
