@@ -173,7 +173,7 @@ def loc_plot(df, date, worst=False):
 	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'], as_index=False).mean()
 
 	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'])
-	plot_df.loc[:, 'Difference'] = plot_df['Gas'] - plot_df['PreGas']
+	plot_df.loc[:, 'Difference'] = (plot_df['Gas'] - plot_df['PreGas']) / plot_df['PreGas']
 
 	plot_facility = plot_df[['FacilityName', 'Latitude', 'Longitude', 'Difference']]
 	func = {'Latitude': ['mean'], 'Longitude': ['mean'], 'Difference': ['sum']}
@@ -268,7 +268,7 @@ def loc_plot(df, date, worst=False):
 									 plot_facility['Difference'].max()])
 	cbar.ax.set_yticklabels([str(int(plot_facility['Difference'].min())), '0', \
 							 str(int(plot_facility['Difference'].max()))])
-	cbar.set_label('Average Production Difference After Winterization', rotation=270)
+	cbar.set_label('Average Percent Production Change After Winterization', rotation=270)
 
 	plt.xlabel('Longitude')
 	plt.ylabel('Latitude')
