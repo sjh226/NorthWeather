@@ -3,6 +3,7 @@ import numpy as np
 import pyodbc
 import sys
 import scipy.stats as stats
+import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -179,8 +180,39 @@ def loc_plot(df, date, worst=False):
 	plot_facility = plot_facility.groupby('FacilityName', as_index=False).agg(func)
 	plot_facility.columns = plot_facility.columns.droplevel(1)
 
+	def shiftedColorMap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
+	    cdict = {'red': [], 'green': [], 'blue': [], 'alpha': []}
+
+	    reg_index = np.linspace(start, stop, 257)
+
+	    shift_index = np.hstack([
+	        np.linspace(0.0, midpoint, 128, endpoint=False),
+	        np.linspace(midpoint, 1.0, 129, endpoint=True)
+	    ])
+
+	    for ri, si in zip(reg_index, shift_index):
+	        r, g, b, a = cmap(ri)
+
+	        cdict['red'].append((si, r, r))
+	        cdict['green'].append((si, g, g))
+	        cdict['blue'].append((si, b, b))
+	        cdict['alpha'].append((si, a, a))
+
+	    newcmap = matplotlib.colors.LinearSegmentedColormap(name, cdict)
+	    plt.register_cmap(cmap=newcmap)
+
+	    return newcmap
+
+	map_max = plot_facility['Difference'].max()
+	map_min = plot_facility['Difference'].min()
+	map_range = map_max - map_min
+	mid_point = abs(map_min / map_range)
+
+	orig_cmap = matplotlib.cm.bwr
+	shifted_cmap = shiftedColorMap(orig_cmap, midpoint=mid_point, name='shifted')
+
 	scat = ax.scatter(plot_facility['Longitude'], plot_facility['Latitude'], \
-			   s=400, c=plot_facility['Difference'], cmap='bwr_r', edgecolor='k')
+			   s=400, c=plot_facility['Difference'], cmap=shifted_cmap, edgecolor='k')
 
 	top_left = plot_facility[plot_facility['FacilityName'].isin(\
 			   ['Champlin 452 C 70', 'Sourdough 33 10 D', \
