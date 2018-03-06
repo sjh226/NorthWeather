@@ -180,6 +180,8 @@ def loc_plot(df, date, worst=False):
 	plot_facility = plot_facility.groupby('FacilityName', as_index=False).agg(func)
 	plot_facility.columns = plot_facility.columns.droplevel(1)
 
+	plot_facility = plot_facility[plot_facility['FacilityName'] != 'Luman 15 20 D']
+
 	def shiftedColorMap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
 	    cdict = {'red': [], 'green': [], 'blue': [], 'alpha': []}
 
@@ -337,15 +339,15 @@ if __name__ == '__main__':
 	# Muddy Creek 3
 	# Champlin 452 C
 
-	with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
-		text_file.write('')
-
-	cluster_df = pd.DataFrame(columns=df.columns)
-	test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
-	roll_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
-
-	for flac in df['WellFlac'].unique():
-		test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
-		event_df = ex_events(df[df['WellFlac'] == flac])
-		cluster_df = cluster_df.append(event_df)
+	# with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
+	# 	text_file.write('')
+	#
+	# cluster_df = pd.DataFrame(columns=df.columns)
+	# test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
+	# roll_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
+	#
+	# for flac in df['WellFlac'].unique():
+	# 	test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
+	# 	event_df = ex_events(df[df['WellFlac'] == flac])
+	# 	cluster_df = cluster_df.append(event_df)
 		# roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
