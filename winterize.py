@@ -140,15 +140,15 @@ def a_b_test(a, b, test_type):
 							  'Significant': 'yes' if p <= 0.05 else 'no'}, \
 							  ignore_index=True)
 
-	# with open('testing/{}.txt'.format(test_type), 'a+') as text_file:
-	# 	text_file.write('Results for WellFlac: {} ({})\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
-	# 					 .format(a['WellFlac'].unique()[0], a['WellName'].unique()[0], t, p, t_cal))
-	# 	if p <= 0.05:
-	# 		text_file.write('Significant p-value!')
-	# 	text_file.write('\n\n')
-	# if p <= 0.05:
-	# 	with open('testing/significant.txt', 'w') as text_file:
-	# 		text_file.write('{}\n'.format(a['WellName'].unique()[0]))
+	with open('testing/{}.txt'.format(test_type), 'a+') as text_file:
+		text_file.write('Results for WellFlac: {} ({})\nResulting t-value: {}\nand p-value: {}\nand calculated t: {}\n'\
+						 .format(a['WellFlac'].unique()[0], a['WellName'].unique()[0], t, p, t_cal))
+		if p <= 0.05:
+			text_file.write('Significant p-value!')
+		text_file.write('\n\n')
+	if p <= 0.05:
+		with open('testing/significant.txt', 'w') as text_file:
+			text_file.write('{}\n'.format(a['WellName'].unique()[0]))
 
 	return test_df
 
@@ -337,15 +337,15 @@ if __name__ == '__main__':
 	# Muddy Creek 3
 	# Champlin 452 C
 
-	# with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
-	# 	text_file.write('')
+	with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
+		text_file.write('')
 
 	cluster_df = pd.DataFrame(columns=df.columns)
 	test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
 	roll_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
 
-	# for flac in df['WellFlac'].unique():
-	# 	test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
-	# 	event_df = ex_events(df[df['WellFlac'] == flac])
-	# 	cluster_df = cluster_df.append(event_df)
-	# 	roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
+	for flac in df['WellFlac'].unique():
+		test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
+		event_df = ex_events(df[df['WellFlac'] == flac])
+		cluster_df = cluster_df.append(event_df)
+		# roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
