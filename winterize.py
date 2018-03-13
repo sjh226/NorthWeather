@@ -64,7 +64,7 @@ def prod_pull(date):
 
 	SQLCommand = ("""
 	   SELECT W.WellFlac
-				 ,W.WellName
+			  ,W.WellName
 			  ,W.API
 			  ,F.FacilityName
 			  ,W.Latitude
@@ -157,6 +157,15 @@ def ex_events(df):
 	df.loc[:,'max_3_day'] = df['maximumdrybulbtemp'].rolling(3).max()
 
 	return df
+
+def decline(df):
+	dec_dic = {}
+	for flac in df['WellFlac'].unique():
+		month_df = df[(df['WellFlac'] == flac) & (df['Gas'] != 0)][['DateKey', 'Gas']]
+		print(month_df.info())
+		month_df = month_df.groupby(by=[df['DateKey'].dt.month, df['DateKey'].dt.year], as_index=False).mean()
+		print(month_df)
+		break
 
 def loc_plot(df, date, worst=False):
 	plt.close()
@@ -310,6 +319,12 @@ def bar_chart(df):
 
 	plt.savefig('figures/bar_plot.png')
 
+def plot_prod(df):
+	plt.close()
+
+	plt.plot(df['DateKey'], df['Gas'])
+
+	plt.show()
 
 if __name__ == '__main__':
 	weather_df = pd.read_csv('data/hourly.csv', dtype=str)
@@ -318,12 +333,14 @@ if __name__ == '__main__':
 	date = '2018-01-01'
 	prod_df = prod_pull(date)
 	prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
+	# for flac in prod_df['WellFlac'].unique():
+	# 	plot_prod(prod_df[prod_df['WellFlac'] == flac])
 
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 
 	df.drop('date', axis=1, inplace=True)
 
-	loc_plot(df, date)
+	# loc_plot(df, date)
 
 	date = '2018-02-07'
 	prod_df = prod_pull(date)
@@ -332,7 +349,8 @@ if __name__ == '__main__':
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 
 	df.drop('date', axis=1, inplace=True)
-	loc_plot(df, date, worst=True)
+	decline(df)
+	# loc_plot(df, date, worst=True)
 	# bar_chart(df)
 
 	# Problem wells:
