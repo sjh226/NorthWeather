@@ -5,6 +5,7 @@ import sys
 import scipy.stats as stats
 import matplotlib
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 
 
 def clean(df):
@@ -162,10 +163,23 @@ def decline(df):
 	dec_dic = {}
 	for flac in df['WellFlac'].unique():
 		month_df = df[(df['WellFlac'] == flac) & (df['Gas'] != 0)][['DateKey', 'Gas']]
-		print(month_df.info())
-		month_df = month_df.groupby(by=[df['DateKey'].dt.month, df['DateKey'].dt.year], as_index=False).mean()
-		print(month_df)
-		break
+		month_df = month_df.groupby(month_df['DateKey'].dt.to_period('M')).mean().reset_index()
+		month_df = month_df[month_df['Gas'].notnull()]
+		month_df.loc[:,'IntDate'] = month_df['DateKey'] - pd.Period('2015-01')
+
+		X = month_df['IntDate']
+		y = month_df['Gas']
+
+		if len(X) == 0:
+			print('Insufficient Data')
+			print('WellFlac ', flac)
+		else:
+			ex_lr = LinearRegression()
+			ex_lr.fit(np.array([np.log(x) for x in X]).reshape(-1, 1), y)
+
+			y_pred = ex_lr.predict(np.array([np.log(x) for x in X]).reshape(-1, 1))
+
+			plot_prod(month_df, y_pred, str(flac))
 
 def loc_plot(df, date, worst=False):
 	plt.close()
@@ -319,12 +333,13 @@ def bar_chart(df):
 
 	plt.savefig('figures/bar_plot.png')
 
-def plot_prod(df):
+def plot_prod(df, pred=None, flac=''):
 	plt.close()
 
-	plt.plot(df['DateKey'], df['Gas'])
+	plt.plot(df['IntDate'], df['Gas'])
+	plt.plot(df['IntDate'], pred)
 
-	plt.show()
+	plt.savefig('figures/curves/decline_curve_{}.png'.format(flac))
 
 if __name__ == '__main__':
 	weather_df = pd.read_csv('data/hourly.csv', dtype=str)
