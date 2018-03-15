@@ -184,7 +184,7 @@ def decline(df):
 			month_df['decay'] = (month_df['predict'].shift(1) - month_df['predict']) / \
 								month_df['predict'].shift(1)
 
-			# plot_prod(month_df, y_pred, str(flac))
+			plot_prod(month_df, y_pred, str(flac))
 			# return_df = return_df.append(month_df)
 
 			df.loc[df['WellFlac'] == flac,'decay'] = np.full(df[df['WellFlac'] == flac].shape[0], \
@@ -346,9 +346,15 @@ def bar_chart(df):
 
 def plot_prod(df, pred=None, flac=''):
 	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
-	plt.plot(df['IntDate'], df['Gas'])
-	plt.plot(df['IntDate'], pred)
+	ax.plot(df['IntDate'], df['Gas'])
+	ax.plot(df['IntDate'], pred)
+
+	plt.xticks(df['IntDate'], df['DateKey'], rotation='vertical')
+	plt.xlabel('Year-Month')
+	plt.ylabel('Monthly Gas Production (mcf)')
+	plt.title('Decline Curve for WellFlac {}'.format(flac))
 
 	plt.savefig('figures/curves/decline_curve_{}.png'.format(flac))
 
