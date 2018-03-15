@@ -161,11 +161,13 @@ def ex_events(df):
 
 def decline(df):
 	dec_dic = {}
+	return_df = pd.DataFrame()
 	for flac in df['WellFlac'].unique():
 		month_df = df[(df['WellFlac'] == flac) & (df['Gas'] != 0)][['DateKey', 'Gas']]
 		month_df = month_df.groupby(month_df['DateKey'].dt.to_period('M')).mean().reset_index()
 		month_df = month_df[month_df['Gas'].notnull()]
 		month_df.loc[:,'IntDate'] = month_df['DateKey'] - pd.Period('2015-01')
+		month_df.loc[:,'WellFlac'] = np.full(month_df.shape[0], flac)
 
 		X = month_df['IntDate']
 		y = month_df['Gas']
@@ -178,8 +180,13 @@ def decline(df):
 			ex_lr.fit(np.array([np.log(x) for x in X]).reshape(-1, 1), y)
 
 			y_pred = ex_lr.predict(np.array([np.log(x) for x in X]).reshape(-1, 1))
+			month_df['predict'] = y_pred
+			month_df['decay'] = (month_df['predict'].shift(1) - month_df['predict']) / \
+								month_df['predict'].shift(1)
 
-			plot_prod(month_df, y_pred, str(flac))
+			# plot_prod(month_df, y_pred, str(flac))
+			return_df = return_df.append(month_df)
+	return return_df
 
 def loc_plot(df, date, worst=False):
 	plt.close()
@@ -364,7 +371,8 @@ if __name__ == '__main__':
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 
 	df.drop('date', axis=1, inplace=True)
-	decline(df)
+	m_df = decline(df)
+
 	# loc_plot(df, date, worst=True)
 	# bar_chart(df)
 
