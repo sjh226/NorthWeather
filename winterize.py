@@ -185,25 +185,29 @@ def decline(df):
 								month_df['predict'].shift(1)
 
 			# plot_prod(month_df, y_pred, str(flac))
-			return_df = return_df.append(month_df)
-	return return_df
+			# return_df = return_df.append(month_df)
+
+			df.loc[df['WellFlac'] == flac,'decay'] = np.full(df[df['WellFlac'] == flac].shape[0], \
+															 month_df['decay'].mean())
+	return df
 
 def loc_plot(df, date, worst=False):
 	plt.close()
 	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
 	pre_df = df[(df['DateKey'] <= '2017-03-31') & (df['maximumdrybulbtemp'] <= 32)]\
-			   [['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'Gas']]
-	pre_df = pre_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'], as_index=False).mean()
+			   [['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'Gas', 'decay']]
+	pre_df = pre_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'decay'], as_index=False).mean()
 	pre_df.rename(index=str, columns={'Gas': 'PreGas'}, inplace=True)
 
 	wint_df = df[(df['DateKey'] >= date) & (df['DateKey'] <= '2018-03-01') & \
 				 (df['maximumdrybulbtemp'] <= 32)]\
-				 [['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'Gas']]
-	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'], as_index=False).mean()
+				 [['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'Gas', 'decay']]
+	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'decay'], as_index=False).mean()
 
-	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude'])
-	plot_df.loc[:, 'Difference'] = (plot_df['Gas'] - plot_df['PreGas']) / plot_df['PreGas']
+	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'decay'])
+	plot_df.loc[:, 'Difference'] = ((plot_df['Gas'] + (plot_df['Gas'] * plot_df['decay']))\
+	 								 - plot_df['PreGas']) / plot_df['PreGas']
 
 	plot_facility = plot_df[['FacilityName', 'Latitude', 'Longitude', 'Difference']]
 	func = {'Latitude': ['mean'], 'Longitude': ['mean'], 'Difference': ['sum']}
@@ -361,8 +365,9 @@ if __name__ == '__main__':
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 
 	df.drop('date', axis=1, inplace=True)
+	df = decline(df)
 
-	# loc_plot(df, date)
+	loc_plot(df, date)
 
 	date = '2018-02-07'
 	prod_df = prod_pull(date)
@@ -371,9 +376,9 @@ if __name__ == '__main__':
 	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
 
 	df.drop('date', axis=1, inplace=True)
-	m_df = decline(df)
+	df = decline(df)
 
-	# loc_plot(df, date, worst=True)
+	loc_plot(df, date, worst=True)
 	# bar_chart(df)
 
 	# Problem wells:
