@@ -375,17 +375,17 @@ if __name__ == '__main__':
 	df.drop('date', axis=1, inplace=True)
 	df = decline(df)
 
-	loc_plot(df, date)
+	# loc_plot(df, date)
 
-	# date = '2018-02-07'
-	# prod_df = prod_pull(date)
-	# prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
-	#
-	# df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
-	#
-	# df.drop('date', axis=1, inplace=True)
-	# df = decline(df)
-	#
+	date = '2018-02-07'
+	prod_df = prod_pull(date)
+	prod_df['DateKey'] = pd.to_datetime(prod_df['DateKey'])
+
+	df = pd.merge(prod_df, weather_df, how='left', left_on='DateKey', right_on='date')
+
+	df.drop('date', axis=1, inplace=True)
+	df = decline(df)
+
 	# loc_plot(df, date, worst=True)
 	# bar_chart(df)
 
