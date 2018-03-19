@@ -137,8 +137,9 @@ def a_b_test(a, b, test_type):
 	test_df = test_df.append({'WellFlac': a['WellFlac'].unique()[0], \
 							  'WellName': a['WellName'].unique()[0], \
 							  'API': a['API'].unique()[0], \
-							  'p-value': p, \
-							  'Significant': 'yes' if p <= 0.05 else 'no'}, \
+							  # divide p-value by half for single-sided
+							  'p-value': p * 0.5, \
+							  'Significant': 'yes' if p <= 0.05 and t > 0 else 'no'}, \
 							  ignore_index=True)
 
 	with open('testing/{}.txt'.format(test_type), 'a+') as text_file:
@@ -156,6 +157,14 @@ def a_b_test(a, b, test_type):
 def ex_events(df):
 	df.loc[:,'max_5_day'] = df['maximumdrybulbtemp'].rolling(5).max()
 	df.loc[:,'max_3_day'] = df['maximumdrybulbtemp'].rolling(3).max()
+
+	def humidity(row):
+		if row['averageralativehumidity'] > 90:
+			return 1
+		else:
+			return 0
+
+	df.loc[:,'humid'] = df.apply(humidity, axis=1)
 
 	return df
 
@@ -374,7 +383,7 @@ if __name__ == '__main__':
 	df.drop('date', axis=1, inplace=True)
 	df = decline(df)
 
-	loc_plot(df, date)
+	# loc_plot(df, date)
 
 	date = '2018-02-07'
 	prod_df = prod_pull(date)
@@ -385,7 +394,7 @@ if __name__ == '__main__':
 	df.drop('date', axis=1, inplace=True)
 	df = decline(df)
 
-	loc_plot(df, date, worst=True)
+	# loc_plot(df, date, worst=True)
 	# bar_chart(df)
 
 	# Problem wells:
@@ -395,12 +404,12 @@ if __name__ == '__main__':
 	# with open('testing/extreme_temp_test_32_all.txt', 'w') as text_file:
 	# 	text_file.write('')
 	#
-	# cluster_df = pd.DataFrame(columns=df.columns)
-	# test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
-	# roll_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
-	#
-	# for flac in df['WellFlac'].unique():
-	# 	test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
-	# 	event_df = ex_events(df[df['WellFlac'] == flac])
-	# 	cluster_df = cluster_df.append(event_df)
-		# roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
+	cluster_df = pd.DataFrame(columns=df.columns)
+	test_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
+	roll_df = pd.DataFrame(columns=['WellFlac', 'WellName', 'API', 'p-value', 'Significant'])
+
+	for flac in df['WellFlac'].unique():
+		test_df = test_df.append(winter_split(df[df['WellFlac'] == flac], date), ignore_index=True)
+		event_df = ex_events(df[df['WellFlac'] == flac])
+		cluster_df = cluster_df.append(event_df)
+		roll_df = roll_df.append(rolling_split(event_df, days=3), ignore_index=True)
