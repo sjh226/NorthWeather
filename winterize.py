@@ -158,6 +158,14 @@ def ex_events(df):
 	df.loc[:,'max_5_day'] = df['maximumdrybulbtemp'].rolling(5).max()
 	df.loc[:,'max_3_day'] = df['maximumdrybulbtemp'].rolling(3).max()
 
+	def humidity(row):
+		if row['averageralativehumidity'] > 90:
+			return 1
+		else:
+			return 0
+
+	df.loc[:,'humid'] = df.apply(humidity, axis=1)
+
 	return df
 
 def decline(df):
