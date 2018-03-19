@@ -206,6 +206,7 @@ def loc_plot(df, date, worst=False):
 	wint_df = wint_df.groupby(['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'decay'], as_index=False).mean()
 
 	plot_df = pd.merge(pre_df, wint_df, on=['WellFlac', 'WellName', 'FacilityName', 'Latitude', 'Longitude', 'decay'])
+	plot_df.loc[plot_df['decay'] < 0, 'decay'] = 0
 	plot_df.loc[:, 'Difference'] = ((plot_df['Gas'] + (plot_df['Gas'] * plot_df['decay']))\
 	 								 - plot_df['PreGas']) / plot_df['PreGas']
 
